@@ -246,9 +246,9 @@ Definition h_prog_rule_ext_call_def:
                    (λres. case res of
                             FFI_final outcome => Ret (SOME (FinalFFI outcome),empty_locals s)
                            | FFI_return new_ffi new_bytes =>
-                              let nmem = write_bytearray array_ptr_adr new_bytes s.memory s.memaddrs s.be in
-                              Ret (NONE,s with <| memory := nmem; ffi := new_ffi |>)
-                              | _ => Ret (SOME Error,s)))) Ret
+                              (let nmem = write_bytearray array_ptr_adr new_bytes s.memory s.memaddrs s.be in
+                                 Ret (NONE,s with <| memory := nmem; ffi := new_ffi |>))
+                           | _ => Ret (SOME Error,s)))) Ret
        | _ => Ret (SOME Error,s))
    | _ => Ret (SOME Error,s)
 End
