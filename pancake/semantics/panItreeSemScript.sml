@@ -50,17 +50,6 @@ Proof
   rw [Once itreeTauTheory.itree_unfold]
 QED
 
-Theorem itree_mrec_recurse_once[simp]:
-  (h s) = Vis (INL seed') k ⇔
-  itree_mrec h s = Tau (itree_mrec (λs. itree_bind (h s) k) seed')
-Proof
-  rw [itree_mrec_def] >>
-  rw [itreeTauTheory.itree_iter_def] >>
-  rw [Once itreeTauTheory.itree_unfold] >>
-  (* needs proof that k' = k and then itree_bind_right_identity *)
-  cheat
-QED
-
 (* mrec theory *)
 
 (* Show that mrec Vis (INL) nodes are equivalent to one step of general recursion *)
@@ -186,10 +175,10 @@ End
  termination of the loop; when the guard is false. *)
 Definition h_prog_rule_while_def:
   h_prog_rule_while g p s = itree_iter
-                               (λseed. case (eval s g) of
+                               (λ(p,s).case (eval s g) of
                                         | SOME (ValWord w) =>
                                            if (w ≠ 0w)
-                                           then (Vis (INL seed)
+                                           then (Vis (INL (p,s))
                                                  (λ(res,s'). case res of
                                                               | SOME Break => Ret (INR (NONE,s'))
                                                               | SOME Continue => Ret (INL (p,s'))
@@ -257,9 +246,9 @@ Definition h_prog_rule_ext_call_def:
                    (λres. case res of
                             FFI_final outcome => Ret (SOME (FinalFFI outcome),empty_locals s)
                            | FFI_return new_ffi new_bytes =>
-                              let nmem = write_bytearray array_ptr_adr new_bytes s.memory s.memaddrs s.be in
-                              Ret (NONE,s with <| memory := nmem; ffi := new_ffi |>)
-                              | _ => Ret (SOME Error,s)))) Ret
+                              (let nmem = write_bytearray array_ptr_adr new_bytes s.memory s.memaddrs s.be in
+                                 Ret (NONE,s with <| memory := nmem; ffi := new_ffi |>))
+                           | _ => Ret (SOME Error,s)))) Ret
        | _ => Ret (SOME Error,s))
    | _ => Ret (SOME Error,s)
 End
