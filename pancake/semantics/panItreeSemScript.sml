@@ -13,15 +13,11 @@ local open alignmentTheory
 val _ = new_theory "panItreeSem";
 
 (* Extension of itreeTauTheory *)
-val _ = temp_set_fixity "\226\139\134" (Infixl 500);
-Overload "\226\139\134" = “itree_bind”;
+val _ = temp_set_fixity "⋆" (Infixl 500);
+Overload "⋆" = “itree_bind”;
 
 val _ = temp_set_fixity "≈" (Infixl 500);
 Overload "≈" = “itree_wbisim”;
-
-Definition itree_trigger_def:
-  itree_trigger event = Vis event Ret
-End
 
 Definition itree_mrec_def:
   itree_mrec rh seed =
@@ -126,7 +122,7 @@ End
 Definition h_prog_rule_seq_def:
   h_prog_rule_seq p1 p2 s = Vis (INL (p1,s))
                                 (λ(res,s'). if res = NONE
-                                            then itree_trigger (INL (p2,s'))
+                                            then Vis (INL (p2,s')) Ret
                                             else Ret (res,s'))
 End
 
