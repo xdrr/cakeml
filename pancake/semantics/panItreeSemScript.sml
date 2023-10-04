@@ -14,10 +14,10 @@ val _ = new_theory "panItreeSem";
 
 (* Extension of itreeTauTheory *)
 val _ = temp_set_fixity "⋆" (Infixl 500);
-Overload "⋆" = “itree_bind”;
+Overload "⋆"[local] = “itree_bind”;
 
 val _ = temp_set_fixity "≈" (Infixl 500);
-Overload "≈" = “itree_wbisim”;
+Overload "≈"[local] = “itree_wbisim”;
 
 Definition itree_mrec_def:
   itree_mrec rh seed =
@@ -297,17 +297,25 @@ Definition h_prog_def:
   (h_prog (Tick,s) = h_prog_rule_tick s)
 End
 
+(* drops internal state from the return leaves of the tree *)
+Definition massage_def:
+  massage stree =
+  case stree of
+    Ret (opt_res, s) => Ret' opt_res
+  | Tau st => Tau' (INL st)
+  | Vis (svis_ev, kt) st => Vis' svis_ev (λffi_res. INR (kt ffi_res, st))
+End
+
 (* ITree semantics for program commands *)
 Definition itree_evaluate_def:
   itree_evaluate p s =
   itree_unfold
   (λt. case t of
-         INL (Ret (res,s)) => Ret' res
-        | INL (Tau t) => Tau' (INL t)
-        | INL (Vis (e,k) g) => Vis' e (λr. INR (k r))
-        | INR (Ret (res,s)) => Ret' res
-        | INR (Tau t) => Tau' (INR t)
-        | INR (Vis e g) => Vis' e (INR o g))
+         INL (stree) => massage stree
+       (* in FFI_result -> (opt_res, state) itree, pack earlier s(tate-k)tree *)
+       | INR ((Ret res_state),st) => massage (st res_state)
+       | INR ((Tau kt),st) => Tau' (INR (kt, st))
+       | INR ((Vis svis_ev kt),st) => Vis' svis_ev (λffi_res. INR (kt ffi_res, st)))
   (INL (itree_mrec h_prog (p,s)))
 End
 
