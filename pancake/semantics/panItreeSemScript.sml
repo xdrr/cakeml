@@ -245,7 +245,7 @@ val mtree_ans = “:γ result option # ('a,'b) state”;
 
 Definition h_prog_rule_ext_call_def:
   h_prog_rule_ext_call ffi_name conf_ptr conf_len array_ptr array_len ^s =
-  case (eval s conf_ptr,eval s conf_len,eval s array_ptr,eval s array_len) of
+  case (eval s conf_len,eval s conf_ptr,eval s array_len,eval s array_ptr) of
     (SOME (ValWord conf_sz),SOME (ValWord conf_ptr_adr),
      SOME (ValWord array_sz),SOME (ValWord array_ptr_adr)) =>
      (case (read_bytearray conf_sz (w2n conf_ptr_adr) (mem_load_byte s.memory s.memaddrs s.be),
