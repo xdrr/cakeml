@@ -30,7 +30,7 @@ Overload ">>=" = “itree_bind”;
 Overload "case" = “itree_CASE”;
 
 Datatype:
-  sem_vis_event = FFI_call string (word8 list) (word8 list)
+  sem_vis_event = FFI_call ffiname (word8 list) (word8 list)
 End
 
 val s = “s:('a,'b) state”;
@@ -82,89 +82,6 @@ Definition itree_mrec_def:
 End
 
 (* mrec theory *)
-
-
-(* TODO: Let's establish whether we can develop some theorems about mrec that let us express
- the monadic general recursion extrnally. *)
-
-(*
-
-    Using a monad transformer, we could define a morphism that converts an itree
-    into an "result monad" (still an ITree) that only has components of Ret and
-    Tau (never vis).
-
-    Then we can refer to the leaves of an ITree through an equational
-    weak bisim theory...
-
-    This seems unideal.
-*)
-
-(*
-
- The WF relation defined by evaluate may not be that useful because 
- mrec isn't represented as directly as WF recursion.
-
- We may either need to express mrec more directly or to capture evaluate into an itree
- or useful monad structure so we can equate it to mrec generated itree's.
-
-*)
-
-(* The below approaches don't seem to help...
-
-   We need a way to reason about the compositionality of mrec so that we can prove
-   a property applied to the inner tree carries to the outer word.
-
-   At the moment that property is leaf equivalence, i.e. if the leaf of some inner program equals x then
-   the leaf of the outer program equals (k x)?
-
- *)
-
-(* The itree -> something else approach:
-
-   Define a monadic catamorphism from itree's (defined by mrec) to some monad which can be made compareable
-   with the outcomes (IO event traces or computation results) of evaluate.
-
-   But this might require us to convert evaluate stuff into a monad as well.
-
-   interp shows how this is done.
-
-   The resulting type is a monad. Hence interp (or related) is a monad morphism.
-   This approach is useful iff there is a different kind of monad that can
-   better capture the result of computation, i.e. the tree leaf.
-
-*)
-
-(* The evaluate -> itree approach:
-
-    Use some combinator (like pure) to convert a recursively defined function
-    into an itree of events representing recursive calls.
-
-    This result should then be almost directly compareable to the mrec result (the mtree).
- *)
-
-(* Alternatively, we could use something like "pure" to lift recursive functions into their
- tree equivalence and then show that a recursive function which does the same thing as a purely
-constructed itree semantics is equivalent. *)
-
-(* TODO: If ITree's are monads, then there must be some theory about monads which
- explains how to build a catamorphism (i.e. to fold) a monad to extract its final result, i.e. the leaf
- of a tree.
- *)
-
-(* TODO: Read up on the "General free monad" and McBride's method
- for turing-completeness in a free monad, i.e. the generalised version of the mrec
-     combinator.
-*)
-
-(* TODO: Before the below it seems like we need to establish how a property over some itree propagates
- via bind.
- *)
-
-(* TODO: Establish a correspondence between mrec and a recursively defined function.
- This is required in order to show that if some property applies to the inner program then it applies
-      to the outer program - which is all that we get from performing recInduct on evaluate
- *)
-
 
 (* Characterisation of infinite itree:s in terms of their paths. *)
 Definition itree_finite_def:
@@ -308,7 +225,7 @@ Definition h_prog_rule_ext_call_def:
      (case (read_bytearray conf_ptr_adr (w2n conf_sz) (mem_load_byte s.memory s.memaddrs s.be),
             read_bytearray array_ptr_adr (w2n array_sz) (mem_load_byte s.memory s.memaddrs s.be)) of
         (SOME conf_bytes,SOME array_bytes) =>
-         Vis (INR (FFI_call (explode ffi_name) conf_bytes array_bytes,
+         Vis (INR (FFI_call (ExtCall (explode ffi_name)) conf_bytes array_bytes,
                    (λres. case res of
                             FFI_final outcome => (SOME (FinalFFI outcome),empty_locals s):('a result option # ('a,'b) state)
                            | FFI_return new_ffi new_bytes =>
@@ -346,6 +263,20 @@ Definition h_prog_rule_tick_def:
    | _ => Ret (NONE,dec_clock s)
 End
 
+Definition h_prog_rule_shmem_def:
+  h_prog_rule_shmem op v ad s =
+  case eval s ad of
+    SOME (ValWord addr) =>
+     (if is_load op
+      then (case FLOOKUP s.locals v of
+              SOME (Val _) => Ret $ panSem$sh_mem_op op v addr s
+             | _ => Ret (SOME Error, s))
+      else (case FLOOKUP s.locals v of
+              SOME (ValWord _) => Ret $ panSem$sh_mem_op op v addr s
+             | _ => Ret (SOME Error, s)))
+   | _ => Ret (SOME Error, s)
+End
+
 (* Recursive event handler for program commands *)
 Definition h_prog_def:
   (h_prog (Skip,s) = Ret (NONE,s)) ∧
@@ -353,6 +284,7 @@ Definition h_prog_def:
   (h_prog (Assign vname e,s) = h_prog_rule_assign vname e s) ∧
   (h_prog (Store dst src,s) = h_prog_rule_store dst src s) ∧
   (h_prog (StoreByte dst src,s) = h_prog_rule_store_byte dst src s) ∧
+  (h_prog (ShMem op v ad,s) = h_prog_rule_shmem op v ad s) ∧
   (h_prog (Seq p1 p2,s) = h_prog_rule_seq p1 p2 s) ∧
   (h_prog (If gexp p1 p2,s) = h_prog_rule_cond gexp p1 p2 s) ∧
   (h_prog (While gexp p,s) = h_prog_rule_while gexp p s) ∧
